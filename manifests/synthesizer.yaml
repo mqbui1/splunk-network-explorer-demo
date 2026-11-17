@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synthesizer
+  namespace: travel-planner
+  labels:
+    app: synthesizer
+    component: travel-planner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: synthesizer
+  template:
+    metadata:
+      labels:
+        app: synthesizer
+        component: travel-planner
+    spec:
+      containers:
+        - name: synthesizer
+          image: travel-planner:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: APP_SERVICE
+              value: "synthesizer"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: OTEL_SERVICE_NAME
+              value: "synthesizer"
+            - name: SPLUNK_OTEL_AGENT
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://$(SPLUNK_OTEL_AGENT):4317"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "grpc"
+            - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+              value: "DELTA"
+            - name: DEPLOYMENT_ENVIRONMENT
+              valueFrom:
+                secretKeyRef:
+                  name: demo-secret
+                  key: env
+            - name: MOCK_MODE
+              value: "true"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: synthesizer
+  namespace: travel-planner
+spec:
+  selector:
+    app: synthesizer
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP

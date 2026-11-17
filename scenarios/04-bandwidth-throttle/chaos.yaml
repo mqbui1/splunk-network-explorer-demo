@@ -1,0 +1,34 @@
+# Scenario 4: Severe bandwidth throttle on synthesizer (100 Kbps limit).
+#
+# The synthesizer aggregates results from all agents — it handles the most data
+# per request. Throttling its bandwidth causes the entire /plan response to be
+# slow and in extreme cases, timeout.
+#
+# What you'll see in Splunk:
+#   APM:              orchestrator -> synthesizer: P99 latency degrades gradually
+#                     (not a step-change like latency injection — gradual throughput
+#                     exhaustion as requests queue up)
+#   Network Explorer: network.flow.bytes_recv/sent drops sharply for synthesizer
+#                     This is the unique signal — throughput starvation, not RTT
+#
+# Story: simulates a noisy-neighbor or bandwidth cap in a shared network segment.
+# The app developer sees "synthesizer is slow" — but it's not code, it's bandwidth.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: synthesizer-bandwidth-throttle
+  namespace: travel-planner
+spec:
+  action: bandwidth
+  mode: all
+  selector:
+    namespaces:
+      - travel-planner
+    labelSelectors:
+      app: synthesizer
+  bandwidth:
+    rate: "100kbps"
+    limit: 20971520    # 20MB burst limit
+    buffer: 10000
+  direction: to
+  duration: "30m"

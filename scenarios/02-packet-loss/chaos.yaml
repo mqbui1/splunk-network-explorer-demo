@@ -1,0 +1,27 @@
+# Scenario 2: 25% packet loss on flight-agent ingress traffic.
+#
+# What you'll see in Splunk:
+#   APM:              flight-agent error rate increases, intermittent timeouts
+#   Network Explorer: network.flow.retrans spikes — classic TCP retransmit signature
+#                     of packet loss in the overlay/virtual network
+#
+# This is the "works sometimes, fails sometimes" scenario — classic microservices
+# container network issue. eBPF retransmit metrics pinpoint it instantly.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: flight-agent-packet-loss
+  namespace: travel-planner
+spec:
+  action: loss
+  mode: all
+  selector:
+    namespaces:
+      - travel-planner
+    labelSelectors:
+      app: flight-agent
+  loss:
+    loss: "25"
+    correlation: "25"
+  direction: to
+  duration: "30m"

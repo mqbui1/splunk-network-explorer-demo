@@ -1,0 +1,28 @@
+# Scenario 1: 2-second network latency injected on hotel-agent ingress traffic.
+#
+# What you'll see in Splunk:
+#   APM:              hotel-agent P99 latency spikes from ~10ms to ~2000ms+
+#   Network Explorer: network.flow.rtt_ns spikes on connections to hotel-agent
+#
+# This demonstrates that the slowness is at the TCP/network layer, not inside
+# the application code or a downstream database.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: hotel-agent-latency
+  namespace: travel-planner
+spec:
+  # Inject on packets flowing INTO hotel-agent
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - travel-planner
+    labelSelectors:
+      app: hotel-agent
+  delay:
+    latency: "2000ms"
+    jitter: "200ms"
+    correlation: "10"
+  direction: to
+  duration: "30m"

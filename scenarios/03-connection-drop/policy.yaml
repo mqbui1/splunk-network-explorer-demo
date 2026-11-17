@@ -1,0 +1,23 @@
+# Scenario 3: Block all ingress traffic to currency-agent.
+#
+# What you'll see in Splunk:
+#   APM:              orchestrator -> currency-agent calls time out (5s timeout)
+#                     Error: "currency-agent: HTTPSConnectionPool read timed out"
+#   Network Explorer: active_connections to currency-agent drops to zero
+#                     TCP connection_failed / new SYN packets with no ACK response
+#
+# Story: simulates a firewall rule change or misconfigured network policy that
+# silently dropped the route to currency-agent (cross-cloud VPC scenario).
+# eBPF shows the connection failure at the TCP layer immediately.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: block-currency-agent
+  namespace: travel-planner
+spec:
+  podSelector:
+    matchLabels:
+      app: currency-agent
+  policyTypes:
+    - Ingress
+  ingress: []   # deny all ingress — no allowed sources

@@ -1,0 +1,78 @@
+# Splunk OTel Collector Helm values for eBPF Network Explorer demo
+#
+# IMPORTANT: networkExplorer.enabled is DEPRECATED since chart v0.88.
+# The correct approach (used here) is:
+#   1. Install this chart with gateway.enabled=true (Gateway mode)
+#   2. Install the upstream opentelemetry-ebpf chart (see collector/ebpf-values.yaml)
+#      pointing endpoint.address to this gateway service
+#
+# Usage:
+#   helm upgrade --install splunk-otel-collector \
+#     splunk-otel-collector-chart/splunk-otel-collector \
+#     -f collector/values.yaml \
+#     --set splunkObservability.accessToken=$ACCESS_TOKEN \
+#     --set splunkObservability.realm=$REALM \
+#     --set clusterName=$INSTANCE-cluster \
+#     --set environment=$INSTANCE-demo \
+#     --namespace splunk-monitoring --create-namespace
+#
+# Helm chart: splunk-otel-collector-chart/splunk-otel-collector v0.88+
+
+# Explicitly disable the deprecated networkExplorer subchart if upgrading from old config
+networkExplorer:
+  enabled: false
+
+splunkObservability:
+  profilingEnabled: false
+
+splunkPlatform:
+  endpoint: ""
+  token: ""
+
+# -----------------------------------------------------------------
+# DaemonSet Agent (APM traces, host metrics, K8s metadata)
+# The agent sends APM trace data directly to Splunk ingest.
+# -----------------------------------------------------------------
+agent:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 500Mi
+
+# -----------------------------------------------------------------
+# Gateway (REQUIRED for Network Explorer eBPF chart)
+#
+# The opentelemetry-ebpf chart (kernel-collector + reducer) sends
+# network flow metrics via OTLP gRPC to this gateway. The gateway
+# then forwards them to Splunk IM via the SignalFx exporter.
+#
+# Single replica required — eBPF chart doesn't support multiple gateways.
+# -----------------------------------------------------------------
+gateway:
+  enabled: true
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# -----------------------------------------------------------------
+# Cluster Receiver (K8s cluster-level metrics and events)
+# -----------------------------------------------------------------
+clusterReceiver:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Operator (auto-instrumentation) not needed — app already instrumented
+operator:
+  enabled: false

@@ -1,0 +1,73 @@
+# OpenTelemetry eBPF Helm chart values (Network Explorer)
+#
+# This is the UPSTREAM OTel eBPF chart — NOT the deprecated networkExplorer
+# subchart in the Splunk collector chart.
+#
+# Docs: https://help.splunk.com/en/splunk-observability-cloud/monitor-infrastructure/network-explorer/set-up-network-explorer-in-kubernetes
+#
+# Usage (after installing the Splunk OTel Collector with gateway mode):
+#
+#   # 1. Find the gateway service name
+#   GATEWAY_SVC=$(kubectl get svc -n splunk-monitoring | grep gateway | awk '{print $1}')
+#
+#   # 2. Install this chart
+#   helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+#   helm repo update open-telemetry
+#   helm upgrade --install otel-ebpf \
+#     open-telemetry/opentelemetry-ebpf \
+#     -f collector/ebpf-values.yaml \
+#     --set endpoint.address=${GATEWAY_SVC}.splunk-monitoring.svc.cluster.local \
+#     --namespace splunk-monitoring
+#
+# Components deployed by this chart:
+#   reducer         - aggregates kernel flow data into MTS (1 pod per cluster)
+#   kernel-collector - eBPF DaemonSet on every node (privileged, reads TCP/DNS/HTTP)
+#   k8s-collector   - enriches flow data with pod/service/namespace K8s metadata
+
+# The reducer aggregates eBPF data points into metric time series.
+# Single shard is fine for a demo cluster with 1-3 nodes.
+reducer:
+  replicaCount: 1
+  ingestShards: 1
+  matchingShards: 1
+  aggregationShards: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Enable all metric categories for the demo (default only enables tcp+udp).
+  # This surfaces HTTP latency and DNS metrics in the Network Explorer navigators.
+  enableMetrics:
+    - http.all
+    - dns.all
+
+# The kernel collector is the eBPF agent — runs on every node.
+# MUST be privileged to load eBPF programs into the kernel.
+# Requires: Linux kernel 3.10-5.19 (not 4.15.0, 4.19.57, 5.1.16)
+kernelCollector:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 500Mi
+
+# Enriches flow data with K8s pod/service/namespace labels
+k8sCollector:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Cloud metadata collector (AWS-only, not needed for local demo)
+cloudCollector:
+  enabled: false
