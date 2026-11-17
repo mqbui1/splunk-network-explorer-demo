@@ -4,16 +4,7 @@
 set -euo pipefail
 
 CLUSTER_NAME="${CLUSTER_NAME:-ebpf-travel-demo}"
-APP_DIR="$(dirname "$0")/../../../../hybrid-cloud-rca-demo/travel-planner"
-
-if [ ! -d "${APP_DIR}" ]; then
-  echo "ERROR: travel-planner source not found at ${APP_DIR}"
-  echo "Expected directory structure:"
-  echo "  Documents/"
-  echo "    hybrid-cloud-rca-demo/travel-planner/  <-- source"
-  echo "    ebpf-apm-demo/network-demo/            <-- this demo"
-  exit 1
-fi
+APP_DIR="$(dirname "$0")/../travel-planner"
 
 echo "==> Building travel-planner image from ${APP_DIR}..."
 docker build -t travel-planner:latest "${APP_DIR}"
